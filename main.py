@@ -1,8 +1,26 @@
-from random import shuffle
 import curses
+from random import shuffle
+from enum import Enum
 
 
-class game:
+class FieldCellState(Enum):
+    FREE = 0
+    MINE = -1
+
+
+class CoverState(Enum):
+    COVERED = 1
+    OPENED = 0
+    FLAG = 2
+
+
+KEY_UP = 65
+KEY_DOWN = 66
+KEY_LEFT = 67
+KEY_RIGHT = 68
+
+
+class Game:
 
     def __init__(self):
         self.field_height = 0
@@ -10,7 +28,7 @@ class game:
         self.field = []
         self.cover = []
 
-    def build(self, height, width, x, y):
+    def build(self, height, width, x, y, num_of_mines):
         """Makes game ready to play."""
         self.field_height = height
         self.field_width = width
@@ -18,25 +36,24 @@ class game:
                       for i in range(self.field_height)]
         self.cover = [[1 for j in range(self.field_width)]
                       for i in range(self.field_height)]
-        self.set_field_to_zeros()
-        self.set_mines(x, y)
+        self.set_mines(x, y, num_of_mines)
         self.count_mines()
         self.open_square(x, y)
 
-    def set_field_to_zeros(self):
+    def clear_field(self):
         """Makes field free from mines"""
         for i in self.field:
             for j in i:
-                j = 0
+                j = FieldCellState.FREE
 
-    def set_mines(self, x, y):
+    def set_mines(self, x, y, num_of_mines):
         """Sets mines somewhere, except for (x, y)."""
         coord_pairs = list(set([(i, j) for i in range(self.field_height)
-                           for j in range(self.field_width)]) - {(x, y)})
+                                for j in range(self.field_width)]) - {(x, y)})
         shuffle(coord_pairs)
-        to_push = coord_pairs[0:10]
+        to_push = coord_pairs[0:num_of_mines]
         for i in to_push:
-            self.field[i[0]][i[1]] = -1
+            self.field[i[0]][i[1]] = FieldCellState.MINE
 
     def count_mines(self):
         """For each square counts number of mines next to it."""
@@ -45,59 +62,54 @@ class game:
                 if self.field[i][j] != -1:
                     for delta_i in range(-1, 2):
                         for delta_j in range(-1, 2):
-                            if ((not (delta_i == 0 and delta_j == 0)) and
-                                i + delta_i >= 0 and
-                                i + delta_i < self.field_height and
-                                j + delta_j >= 0 and
-                                j + delta_j < self.field_width and
-                                self.field[i + delta_i][j + delta_j] == -1):
-                                    self.field[i][j] = self.field[i][j] + 1
+                            if (not (delta_i == 0 and delta_j == 0) and
+                                    0 <= i + delta_i < self.field_height and
+                                    0 <= j + delta_j < self.field_width and
+                                    self.field[i + delta_i][j + delta_j]
+                                    == -1):
+                                self.field[i][j] = self.field[i][j] + 1
 
     def open_square(self, x, y):
-        """Openes square of the field."""
+        """Opens square of the field."""
         if self.cover[x][y] in {0, 2}:
             return False
-        else:
-            if self.cover[x][y] == 1:
-                if self.field[x][y] == -1:
-                    return True
-                else:
-                    self.cover[x][y] = 0
-                    if self.field[x][y] == 0:
-                        self.recurcive_opening_of_zeros(x, y)
-                    return False
+        if self.cover[x][y] == 1:
+            if self.field[x][y] == -1:
+                return True
+            self.cover[x][y] = 0
+            if self.field[x][y] == 0:
+                self.recursive_opening_of_zeros(x, y)
+            return False
 
     def set_flag(self, x, y):
         """Sets flag into the square (x, y)."""
-        if self.cover[x][y] == 1:
-            self.cover[x][y] = 2
-        elif self.cover[x][y] == 2:
-            self.cover[x][y] = 1
+        if self.cover[x][y] == CoverState.COVERED:
+            self.cover[x][y] = CoverState.FLAG
+        elif self.cover[x][y] == CoverState.FLAG:
+            self.cover[x][y] = CoverState.COVERED
 
-    def recurcive_opening_of_zeros(self, x, y):
-        """Openes all zeres near current."""
-        if (self.field[x][y] != 0):
+    def recursive_opening_of_zeros(self, x, y):
+        """Opens all zeres near current."""
+        if self.field[x][y] != 0:
             return None
         self.cover[x][y] = 0
         for delta_x in range(-1, 2):
             for delta_y in range(-1, 2):
-                if not(delta_x == 0 and delta_y == 0):
-                    if (x + delta_x >= 0 and x + delta_x < self.field_width and
-                        y + delta_y >= 0 and
-                        y + delta_y < self.field_height and
-                        not (delta_x == 0 and delta_y == 0)):
-                            if (self.field[x + delta_x][y + delta_y] == 0 and
-                                    self.cover[x + delta_x][y + delta_y] == 1):
-                                self.recurcive_opening_of_zeros(x + delta_x,
-                                                                y + delta_y)
-                            elif (self.field[x + delta_x][y + delta_y] > 0 and
-                                  self.cover[x + delta_x][y + delta_y] == 1):
-                                self.open_square(x + delta_x, y + delta_y)
+                if not (delta_x == 0 and delta_y == 0):
+                    if 0 <= x + delta_x < self.field_width and \
+                            0 <= y + delta_y < self.field_height and \
+                            not (delta_x == 0 and delta_y == 0):
+                        if (self.field[x + delta_x][y + delta_y] == 0 and
+                                self.cover[x + delta_x][y + delta_y] == 1):
+                            self.recursive_opening_of_zeros(x + delta_x,
+                                                            y + delta_y)
+                        elif (self.field[x + delta_x][y + delta_y] > 0 and
+                              self.cover[x + delta_x][y + delta_y] == 1):
+                            self.open_square(x + delta_x, y + delta_y)
 
 
-class drower:
-
-    current_game = game()
+class Drower:
+    current_game = Game()
 
     def __init__(self):
         self.k = None
@@ -111,16 +123,16 @@ class drower:
         while self.k != ord('q'):
             game_screen.refresh()
             self.k = game_screen.getch()
-            if self.k == 66:  # key down
-                cursor_y = cursor_y + 1
-            elif self.k == 65:  # key up
+            if self.k == KEY_UP:
                 cursor_y = cursor_y - 1
-            elif self.k == 67:
+            elif self.k ==KEY_DOWN:
+                cursor_y = cursor_y + 1
+            elif self.k == KEY_LEFT:
                 cursor_x = cursor_x + 1
             elif self.k == 68:
                 cursor_x = cursor_x - 1
             elif self.k == ord(' '):
-                self.current_game.build(height, width, cursor_x, cursor_y)
+                self.current_game.build(height, width, cursor_x, cursor_y, 7)
                 return self.play_game(self.current_game, cursor_x, cursor_y)
             cursor_x = max(0, cursor_x)
             cursor_x = min(width - 1, cursor_x)
@@ -162,7 +174,7 @@ class drower:
                 cursor_x = cursor_x - 1
             elif self.k == ord(' '):
                 if self.current_game.open_square(cursor_x, cursor_y):
-                    return self.game_over()
+                    return self.game_over(game_screen)
             elif self.k == ord('f'):
                 self.current_game.set_flag(cursor_x, cursor_y)
             cursor_x = max(0, cursor_x)
@@ -184,8 +196,7 @@ class drower:
             game_screen.refresh()
             self.k = game_screen.getch()
 
-    def game_over(self):
-        game_screen = curses.initscr()
+    def game_over(self, game_screen):
         game_screen.clear()
         game_screen.addstr(1, 1, "You failed!")
         game_screen.addstr(3, 1, "Press m to get into game menu")
@@ -197,5 +208,19 @@ class drower:
             game_screen.refresh()
             self.k = game_screen.getch()
 
-drower1 = drower()
-drower1.game_menu()
+    def you_win(self, game_screen):
+        game_screen.clear()
+        game_screen.addstr(1, 1, "You won!")
+        game_screen.addstr(3, 1, "Press m to get into game menu")
+        game_screen.addstr(5, 1, "Press q to get into game menu")
+        game_screen.refresh()
+        while self.k != ord('q'):
+            if self.k == ord('m'):
+                return self.game_menu()
+            game_screen.refresh()
+            self.k = game_screen.getch()
+
+
+if __name__ == "__main__":
+    drower1 = Drower()
+    drower1.game_menu()
