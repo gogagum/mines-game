@@ -19,7 +19,6 @@ KEY_DOWN = 66
 KEY_LEFT = 67
 KEY_RIGHT = 68
 
-
 FIELD_MINE = -1
 
 
@@ -83,8 +82,10 @@ class Game:
 
     def open_square(self, x, y):
         """Opens square of the field."""
-        if self.cover[x][y] in {CoverState.OPENED, CoverState.FLAG}:
+        if self.cover[x][y] == CoverState.FLAG:
             return False
+        if self.cover[x][y] == CoverState.OPENED:
+            return self.opening_by_number(x, y)
         if self.cover[x][y] == CoverState.COVERED:
             if self.field[x][y] == -1:
                 return True
@@ -93,7 +94,40 @@ class Game:
                 self.recursive_opening_of_zeros(x, y)
             else:
                 self.cover[x][y] = CoverState.OPENED
+        return False
+
+    def opening_by_number(self, x, y):
+        mines_near = 0
+        flags_near = 0
+        flag_error = False
+        for delta_x in range(-1, 2):
+            for delta_y in range(-1, 2):
+                if not (delta_x == 0 and delta_y == 0) and \
+                        0 <= x + delta_x < self.field_height and \
+                        0 <= y + delta_y < self.field_width:
+                    mine_found = self.field[x + delta_x][y + delta_y] \
+                        == FIELD_MINE
+                    flag_found = self.cover[x + delta_x][y + delta_y] \
+                        == CoverState.FLAG
+                    mines_near += 1 if mine_found else 0
+                    flags_near += 1 if flag_found else 0
+                    if flag_found and not mine_found:
+                        flag_error = True
+        if mines_near == flags_near and flag_error:
+            return True
+        if flags_near > mines_near:
             return False
+
+        for delta_x in range(-1, 2):
+            for delta_y in range(-1, 2):
+                if not (delta_x == 0 and delta_y == 0) and \
+                        0 <= x + delta_x < self.field_height and \
+                        0 <= y + delta_y < self.field_width:
+                    if self.field[x + delta_x] != FIELD_MINE and \
+                            self.cover[x + delta_x][y + delta_y] \
+                            == CoverState.COVERED:
+                        self.open_square(x + delta_x, y + delta_y)
+        return False
 
     def set_flag(self, x, y):
         """Sets flag into the square (x, y)."""
@@ -124,11 +158,12 @@ class Game:
                             self.recursive_opening_of_zeros(x + delta_x,
                                                             y + delta_y)
                         elif (self.field[x + delta_x][y + delta_y] > 0 and
-                                self.cover[x + delta_x][y + delta_y]
-                                == CoverState.COVERED):
+                              self.cover[x + delta_x][y + delta_y]
+                              == CoverState.COVERED):
                             self.open_square(x + delta_x, y + delta_y)
 
     def check(self):
+        """Checks winning of player."""
         if self.num_of_marked < self.field_height * self.field_width or \
                 self.num_of_mines != self.num_of_flags:
             return 0
@@ -145,21 +180,23 @@ class Drawer:
         self.cursor_y = 0
 
     def open_first_sqr(self, height, width):
+        """Opening of first square"""
         self.set_to_default()
         self.current_game.field_width = width
         self.current_game.field_height = height
         while self.k != ord('q'):
             self.k = self.game_screen.getch()
-            self.change_cursor_position()
             if self.k == ord(' '):
-                self.current_game.build(height, width, self.cursor_x,\
+                self.current_game.build(height, width, self.cursor_x, \
                                         self.cursor_y, 7)
                 return self.play_game()
+            self.change_cursor_position()
             self.game_screen.clear()
             self.game_screen.move(self.cursor_y, self.cursor_x * 2)
             self.game_screen.refresh()
 
     def play_game(self):
+        """Gameplay function"""
         self.k = None
         self.game_screen.clear()
         self.game_screen.move(self.cursor_y, self.cursor_x * 2)
@@ -167,6 +204,11 @@ class Drawer:
         while self.k != ord('q'):
             self.k = self.game_screen.getch()
             self.game_screen.clear()
+            if self.k == ord(' '):
+                if self.current_game.open_square(self.cursor_x, self.cursor_y):
+                    return self.game_over()
+            elif self.k in {ord('f'), ord('F')}:
+                self.current_game.set_flag(self.cursor_x, self.cursor_y)
             for i in range(self.current_game.field_height):
                 for j in range(self.current_game.field_width):
                     if self.current_game.cover[i][j] == CoverState.COVERED:
@@ -175,55 +217,46 @@ class Drawer:
                         self.game_screen.addstr(j, i * 2, 'F')
                     elif self.current_game.cover[i][j] == CoverState.OPENED:
                         self.game_screen.addstr(j, i * 2,
-                                           str(self.current_game.field[i][j]))
-            self.game_screen.refresh()
-            self.game_screen.move(self.cursor_y, self.cursor_x * 2)
+                                                str(self.current_game.field[i][
+                                                        j]))
             self.change_cursor_position()
-            if self.k == ord(' '):
-                if self.current_game.open_square(self.cursor_x, self.cursor_y):
-                    return self.game_over()
-            elif self.k == ord('f'):
-                self.current_game.set_flag(self.cursor_x, self.cursor_y)
-            # debug
-            # self.game_screen.addstr(2, 18, str(self.current_game.num_of_marked))
-            # self.game_screen.addstr(3, 18, str(self.current_game.num_of_flags))
-            # self.game_screen.addstr(4, 18, str(self.current_game.num_of_mines))
-            # end of debugging output
+            self.game_screen.move(self.cursor_y, self.cursor_x * 2)
+            self.game_screen.refresh()
             self.game_screen.move(self.cursor_y, self.cursor_x * 2)
             self.game_screen.refresh()
             if self.current_game.check():
                 return self.you_win()
 
     def game_menu(self):
-        self.game_screen.clear()
-        self.game_screen.addstr(1, 1, "Press s to start a game")
-        self.game_screen.addstr(3, 1, "Press q to finish")
-        self.game_screen.refresh()
         while self.k != ord('q'):
+            self.game_screen.clear()
+            self.game_screen.addstr(1, 1, "Press s to start a game")
+            self.game_screen.addstr(3, 1, "Press q to finish")
+            self.game_screen.refresh()
             if self.k == ord('s'):
                 return self.open_first_sqr(8, 8)
             self.game_screen.refresh()
             self.k = self.game_screen.getch()
 
     def game_over(self):
-        self.game_screen.clear()
-        self.game_screen.addstr(1, 1, "You failed!")
-        self.game_screen.addstr(3, 1, "Press m to get into game menu")
-        self.game_screen.addstr(5, 1, "Press q to get into game menu")
-        self.game_screen.refresh()
         while self.k != ord('q'):
+            self.game_screen.clear()
+            self.game_screen.addstr(1, 1, "You failed!")
+            self.game_screen.addstr(3, 1, "Press m to get into game menu")
+            self.game_screen.addstr(5, 1, "Press q to get into game menu")
+            self.game_screen.refresh()
             if self.k == ord('m'):
                 return self.game_menu()
             self.game_screen.refresh()
             self.k = self.game_screen.getch()
 
     def you_win(self):
-        self.game_screen.clear()
-        self.game_screen.addstr(1, 1, "You won!")
-        self.game_screen.addstr(3, 1, "Press m to get into game menu")
-        self.game_screen.addstr(5, 1, "Press q to get into game menu")
-        self. game_screen.refresh()
         while self.k != ord('q'):
+            self.game_screen.clear()
+            self.game_screen.addstr(1, 1, "You won!")
+            self.game_screen.addstr(3, 1, "Press m to get into game menu")
+            self.game_screen.addstr(5, 1, "Press q to get into game menu")
+            self.game_screen.refresh()
             if self.k == ord('m'):
                 return self.game_menu()
             self.game_screen.refresh()
