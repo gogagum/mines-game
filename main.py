@@ -191,18 +191,21 @@ class Drawer:
         self.layout_height = height
         self.layout_width = width * 2
         self.count_plus()
+        self.game_screen.clear()
+        self.draw_edjes()
         self.game_screen.move(self.cursor_y + self.y_plus,
                               self.cursor_x * 2 + self.x_plus)
         self.game_screen.refresh()
         while self.k != ord('q'):
             self.count_plus()
             self.k = self.game_screen.getch()
+            self.game_screen.clear()
+            self.draw_edjes()
             if self.k == ord(' '):
                 self.current_game.build(height, width, self.cursor_y,
                                         self.cursor_x, 7)
                 return self.play_game()
             self.change_cursor_position()
-            self.game_screen.clear()
             self.game_screen.move(self.cursor_y + self.y_plus,
                                   self.cursor_x * 2 + self.x_plus)
             self.game_screen.refresh()
@@ -212,6 +215,7 @@ class Drawer:
         self.k = None
         self.game_screen.clear()
         self.count_plus()
+        self.draw_edjes()
         self.game_screen.move(self.cursor_y + self.y_plus,
                               self.cursor_x * 2 + self.x_plus)
         self.game_screen.refresh()
@@ -224,6 +228,7 @@ class Drawer:
                     return self.game_over()
             elif self.k in {ord('f'), ord('F')}:
                 self.current_game.set_flag(self.cursor_y, self.cursor_x)
+            self.draw_edjes()
             for y in range(self.current_game.field_height):
                 for x in range(self.current_game.field_width):
                     if self.current_game.cover[y][x] == CoverState.COVERED:
@@ -245,10 +250,15 @@ class Drawer:
                 return self.you_win()
 
     def game_menu(self):
+        self.layout_width = 23
+        self.layout_height = 3
         while self.k != ord('q'):
+            self.count_plus()
             self.game_screen.clear()
-            self.game_screen.addstr(1, 1, "Press s to start a game")
-            self.game_screen.addstr(3, 1, "Press q to finish")
+            self.game_screen.addstr(self.y_plus, self.x_plus,
+                                    "Press s to start a game")
+            self.game_screen.addstr(2 + self.y_plus, self.x_plus,
+                                    "Press q to finish")
             self.game_screen.refresh()
             if self.k == ord('s'):
                 return self.open_first_sqr(8, 8)
@@ -256,11 +266,16 @@ class Drawer:
             self.k = self.game_screen.getch()
 
     def game_over(self):
+        self.layout_width = 29
+        self.layout_height = 5
         while self.k != ord('q'):
+            self.count_plus()
             self.game_screen.clear()
-            self.game_screen.addstr(1, 1, "You failed!")
-            self.game_screen.addstr(3, 1, "Press m to get into game menu")
-            self.game_screen.addstr(5, 1, "Press q to get into game menu")
+            self.game_screen.addstr(self.y_plus, self.x_plus, "You failed!")
+            self.game_screen.addstr(2 + self.y_plus, self.x_plus,
+                                    "Press m to get into game menu")
+            self.game_screen.addstr(4 + self.y_plus, self.x_plus,
+                                    "Press q to get into game menu")
             self.game_screen.refresh()
             if self.k == ord('m'):
                 return self.game_menu()
@@ -268,11 +283,16 @@ class Drawer:
             self.k = self.game_screen.getch()
 
     def you_win(self):
+        self.layout_width = 29
+        self.layout_height = 5
         while self.k != ord('q'):
+            self.count_plus()
             self.game_screen.clear()
-            self.game_screen.addstr(1, 1, "You won!")
-            self.game_screen.addstr(3, 1, "Press m to get into game menu")
-            self.game_screen.addstr(5, 1, "Press q to get into game menu")
+            self.game_screen.addstr(self.y_plus, self.x_plus, "You won!")
+            self.game_screen.addstr(2 + self.y_plus, self.x_plus,
+                                    "Press m to get into game menu")
+            self.game_screen.addstr(4 + self.y_plus, self.x_plus,
+                                    "Press q to get into game menu")
             self.game_screen.refresh()
             if self.k == ord('m'):
                 return self.game_menu()
@@ -307,6 +327,21 @@ class Drawer:
         window_height, window_width = self.game_screen.getmaxyx()
         self.y_plus = (window_height - self.layout_height) // 2
         self.x_plus = (window_width - self.layout_width) // 2
+
+    def draw_edjes(self):
+        for y in range(self.y_plus, self.y_plus + self.layout_height):
+            self.game_screen.addstr(y, self.x_plus - 1, '│')
+            self.game_screen.addstr(y, self.x_plus + self.layout_width, '│')
+        for x in range(self.x_plus, self.x_plus + self.layout_width):
+            self.game_screen.addstr(self.y_plus - 1, x, '─')
+            self.game_screen.addstr(self.y_plus + self.layout_height, x, '─')
+        self.game_screen.addstr(self.y_plus - 1, self.x_plus - 1, '┌')
+        self.game_screen.addstr(self.y_plus - 1,
+                                self.x_plus + self.layout_width, '┐')
+        self.game_screen.addstr(self.y_plus + self.layout_height,
+                                self.x_plus - 1, '└')
+        self.game_screen.addstr(self.y_plus + self.layout_height,
+                                self.x_plus + self.layout_width, '┘')
 
 
 if __name__ == "__main__":
