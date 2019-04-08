@@ -115,7 +115,7 @@ class Game:
                         flag_error = True
         if mines_near == flags_near and flag_error:
             return True
-        if flags_near > mines_near:
+        if flags_near != mines_near:
             return False
 
         for delta_x in range(-1, 2):
@@ -178,51 +178,68 @@ class Drawer:
         self.k = None
         self.cursor_x = 0
         self.cursor_y = 0
+        self.layout_height = 0
+        self.layout_width = 0
+        self.y_plus = 0
+        self.x_plus = 0
 
     def open_first_sqr(self, height, width):
         """Opening of first square"""
         self.set_to_default()
         self.current_game.field_width = width
         self.current_game.field_height = height
+        self.layout_height = height
+        self.layout_width = width * 2
+        self.count_plus()
+        self.game_screen.move(self.cursor_y + self.y_plus,
+                              self.cursor_x * 2 + self.x_plus)
+        self.game_screen.refresh()
         while self.k != ord('q'):
+            self.count_plus()
             self.k = self.game_screen.getch()
             if self.k == ord(' '):
-                self.current_game.build(height, width, self.cursor_x, \
-                                        self.cursor_y, 7)
+                self.current_game.build(height, width, self.cursor_y,
+                                        self.cursor_x, 7)
                 return self.play_game()
             self.change_cursor_position()
             self.game_screen.clear()
-            self.game_screen.move(self.cursor_y, self.cursor_x * 2)
+            self.game_screen.move(self.cursor_y + self.y_plus,
+                                  self.cursor_x * 2 + self.x_plus)
             self.game_screen.refresh()
 
     def play_game(self):
         """Gameplay function"""
         self.k = None
         self.game_screen.clear()
-        self.game_screen.move(self.cursor_y, self.cursor_x * 2)
+        self.count_plus()
+        self.game_screen.move(self.cursor_y + self.y_plus,
+                              self.cursor_x * 2 + self.x_plus)
         self.game_screen.refresh()
         while self.k != ord('q'):
+            self.count_plus()
             self.k = self.game_screen.getch()
             self.game_screen.clear()
             if self.k == ord(' '):
-                if self.current_game.open_square(self.cursor_x, self.cursor_y):
+                if self.current_game.open_square(self.cursor_y, self.cursor_x):
                     return self.game_over()
             elif self.k in {ord('f'), ord('F')}:
-                self.current_game.set_flag(self.cursor_x, self.cursor_y)
-            for i in range(self.current_game.field_height):
-                for j in range(self.current_game.field_width):
-                    if self.current_game.cover[i][j] == CoverState.COVERED:
-                        self.game_screen.addstr(j, i * 2, ' ')
-                    elif self.current_game.cover[i][j] == CoverState.FLAG:
-                        self.game_screen.addstr(j, i * 2, 'F')
-                    elif self.current_game.cover[i][j] == CoverState.OPENED:
-                        self.game_screen.addstr(j, i * 2,
-                                                str(self.current_game.field[i][
-                                                        j]))
+                self.current_game.set_flag(self.cursor_y, self.cursor_x)
+            for y in range(self.current_game.field_height):
+                for x in range(self.current_game.field_width):
+                    if self.current_game.cover[y][x] == CoverState.COVERED:
+                        self.game_screen.addstr(y + self.y_plus, x * 2 +
+                                                self.x_plus, ' ')
+                    elif self.current_game.cover[y][x] == CoverState.FLAG:
+                        self.game_screen.addstr(y + self.y_plus, x * 2 +
+                                                self.x_plus, 'F')
+                    elif self.current_game.cover[y][x] == CoverState.OPENED:
+                        self.game_screen.addstr(y + self.y_plus, x * 2 +
+                                                self.x_plus,
+                                                str(self.current_game.field[y][
+                                                x]))
             self.change_cursor_position()
-            self.game_screen.move(self.cursor_y, self.cursor_x * 2)
-            self.game_screen.refresh()
-            self.game_screen.move(self.cursor_y, self.cursor_x * 2)
+            self.game_screen.move(self.cursor_y + self.y_plus,
+                                  self.cursor_x * 2 + self.x_plus)
             self.game_screen.refresh()
             if self.current_game.check():
                 return self.you_win()
@@ -285,6 +302,11 @@ class Drawer:
         self.cursor_x = 0
         self.cursor_y = 0
         self.game_screen.refresh()
+
+    def count_plus(self):
+        window_height, window_width = self.game_screen.getmaxyx()
+        self.y_plus = (window_height - self.layout_height) // 2
+        self.x_plus = (window_width - self.layout_width) // 2
 
 
 if __name__ == "__main__":
