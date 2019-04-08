@@ -209,6 +209,10 @@ class Drawer:
             self.game_screen.move(self.cursor_y + self.y_plus,
                                   self.cursor_x * 2 + self.x_plus)
             self.game_screen.refresh()
+        if self.k == ord('q'):
+            self.game_screen.clear()
+            self.game_screen.move(1, 1)
+            self.game_screen.refresh()
 
     def play_game(self):
         """Gameplay function"""
@@ -236,7 +240,8 @@ class Drawer:
                                                 self.x_plus, ' ')
                     elif self.current_game.cover[y][x] == CoverState.FLAG:
                         self.game_screen.addstr(y + self.y_plus, x * 2 +
-                                                self.x_plus, 'F')
+                                                self.x_plus, 'F',
+                                                curses.A_STANDOUT)
                     elif self.current_game.cover[y][x] == CoverState.OPENED:
                         self.game_screen.addstr(y + self.y_plus, x * 2 +
                                                 self.x_plus,
@@ -248,6 +253,10 @@ class Drawer:
             self.game_screen.refresh()
             if self.current_game.check():
                 return self.you_win()
+        if self.k == ord('q'):
+            self.game_screen.clear()
+            self.game_screen.move(1, 1)
+            self.game_screen.refresh()
 
     def game_menu(self):
         self.layout_width = 23
@@ -264,6 +273,10 @@ class Drawer:
                 return self.open_first_sqr(8, 8)
             self.game_screen.refresh()
             self.k = self.game_screen.getch()
+        if self.k == ord('q'):
+            self.game_screen.clear()
+            self.game_screen.move(1, 1)
+            self.game_screen.refresh()
 
     def game_over(self):
         self.layout_width = 29
@@ -281,6 +294,10 @@ class Drawer:
                 return self.game_menu()
             self.game_screen.refresh()
             self.k = self.game_screen.getch()
+        if self.k == ord('q'):
+            self.game_screen.clear()
+            self.game_screen.move(1, 1)
+            self.game_screen.refresh()
 
     def you_win(self):
         self.layout_width = 29
@@ -298,6 +315,10 @@ class Drawer:
                 return self.game_menu()
             self.game_screen.refresh()
             self.k = self.game_screen.getch()
+        if self.k == ord('q'):
+            self.game_screen.clear()
+            self.game_screen.move(1, 1)
+            self.game_screen.refresh()
 
     def check_cursor_position(self):
         self.cursor_x = max(0, self.cursor_x)
