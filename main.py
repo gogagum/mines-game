@@ -38,7 +38,7 @@ class Game:
     def build(self, height, width, x, y, num_of_mines):
         """Makes game ready to play."""
         self.clear_field()
-        self.field_height = height
+        self.field_height = heightt
         self.field_width = width
         self.field = [[0 for j in range(self.field_width)]
                       for i in range(self.field_height)]
@@ -288,7 +288,7 @@ class Drawer:
             self.game_screen.addstr(2 + self.y_plus, self.x_plus,
                                     "Press m to get into game menu")
             self.game_screen.addstr(4 + self.y_plus, self.x_plus,
-                                    "Press q to get into game menu")
+                                    "Press q to quit the game")
             self.game_screen.refresh()
             if self.k == ord('m'):
                 return self.game_menu()
@@ -309,7 +309,7 @@ class Drawer:
             self.game_screen.addstr(2 + self.y_plus, self.x_plus,
                                     "Press m to get into game menu")
             self.game_screen.addstr(4 + self.y_plus, self.x_plus,
-                                    "Press q to get into game menu")
+                                    "Press q to quit the game")
             self.game_screen.refresh()
             if self.k == ord('m'):
                 return self.game_menu()
