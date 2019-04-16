@@ -38,7 +38,7 @@ class Game:
     def build(self, height, width, x, y, num_of_mines):
         """Makes game ready to play."""
         self.clear_field()
-        self.field_height = heightt
+        self.field_height = height
         self.field_width = width
         self.field = [[0 for j in range(self.field_width)]
                       for i in range(self.field_height)]
